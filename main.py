@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -6,10 +7,21 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from llama_index.llms.openai import OpenAI
 
+# Load environment variables
 load_dotenv()
 
-app = FastAPI(title="Shadow.Ai")
+BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_FILE = BASE_DIR / "frontend" / "index.html"
 
+app = FastAPI(
+    title="Shadow.Ai",
+    version="1.0.0",
+)
+
+
+# =========================
+# Configuration
+# =========================
 
 GAPGPT_API_KEY = os.getenv("GAPGPT_API_KEY")
 
@@ -25,8 +37,14 @@ MODEL = os.getenv(
 
 
 if not GAPGPT_API_KEY:
-    raise RuntimeError("GAPGPT_API_KEY is missing in .env")
+    raise RuntimeError(
+        "GAPGPT_API_KEY is missing in environment variables"
+    )
 
+
+# =========================
+# AI
+# =========================
 
 llm = OpenAI(
     model=MODEL,
@@ -35,13 +53,27 @@ llm = OpenAI(
 )
 
 
+# =========================
+# Request model
+# =========================
+
 class ChatRequest(BaseModel):
     message: str
 
 
+# =========================
+# Routes
+# =========================
+
 @app.get("/")
 def root():
-    return FileResponse("frontend/index.html")
+    if not FRONTEND_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Frontend file not found",
+        )
+
+    return FileResponse(FRONTEND_FILE)
 
 
 @app.get("/api/status")
@@ -55,14 +87,17 @@ def status():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    if not request.message.strip():
+
+    message = request.message.strip()
+
+    if not message:
         raise HTTPException(
             status_code=400,
             detail="پیام نمی‌تواند خالی باشد.",
         )
 
     try:
-        response = llm.complete(request.message)
+        response = llm.complete(message)
 
         return {
             "answer": str(response),
@@ -71,5 +106,5 @@ def chat(request: ChatRequest):
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=str(e),
+            detail=f"AI request failed: {str(e)}",
         )

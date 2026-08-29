@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+llama-index-core
+llama-index-llms-openai
+llama-index-embeddings-openai
+llama-index-readers-file
+llama-index-indices-managed-llama-cloud
+llama-deploy==0.8.1
+aiostream
+docx2txt
