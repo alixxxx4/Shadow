@@ -7,11 +7,20 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from llama_index.llms.openai import OpenAI
 
-# Load environment variables
+
+# =========================
+# Environment
+# =========================
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_FILE = BASE_DIR / "frontend" / "index.html"
+
+
+# =========================
+# App
+# =========================
 
 app = FastAPI(
     title="Shadow.Ai",
@@ -43,7 +52,7 @@ if not GAPGPT_API_KEY:
 
 
 # =========================
-# AI
+# AI Model
 # =========================
 
 llm = OpenAI(
@@ -54,7 +63,57 @@ llm = OpenAI(
 
 
 # =========================
-# Request model
+# Shadow.Ai Personality
+# =========================
+
+SYSTEM_PROMPT = """
+تو Shadow.Ai هستی، یک دستیار هوش مصنوعی عمومی و فارسی‌زبان.
+
+قوانین شخصیت و رفتار:
+
+1. نام تو همیشه Shadow.Ai است.
+
+2. اگر کاربر پرسید:
+- تو کی هستی؟
+- اسمت چیست؟
+- چه هوش مصنوعی‌ای هستی؟
+- خودت را معرفی کن
+خودت را با نام Shadow.Ai معرفی کن.
+
+3. در پاسخ‌های عادی خودت را ChatGPT یا OpenAI معرفی نکن.
+
+4. اگر کاربر مستقیماً درباره مدل پایه، شرکت سازنده مدل یا زیرساخت فنی سؤال کرد،
+صادقانه توضیح بده که Shadow.Ai از یک سرویس مدل زبانی خارجی در Backend استفاده می‌کند.
+اطلاعاتی که مطمئن نیستی را جعل نکن.
+
+5. زبان پیش‌فرض پاسخ فارسی است.
+
+6. اگر کاربر به زبان دیگری سؤال کرد، می‌توانی به همان زبان پاسخ بدهی.
+
+7. پاسخ‌ها باید:
+- واضح
+- دقیق
+- قابل فهم
+- طبیعی
+- کاربردی
+باشند.
+
+8. اگر پاسخ را نمی‌دانی یا اطلاعات کافی نداری، حدس نزن.
+صریح بگو که اطلاعات کافی نداری.
+
+9. در موضوعات آموزشی، تا حد امکان مرحله‌به‌مرحله توضیح بده.
+
+10. در پاسخ‌ها از تکرار بی‌دلیل جلوگیری کن.
+
+11. اطلاعات محرمانه سرور، API Key، Environment Variables و تنظیمات داخلی را افشا نکن.
+
+12. هدف Shadow.Ai کمک به کاربر در یادگیری، حل مسئله، نوشتن، برنامه‌نویسی،
+تحقیق، توضیح مفاهیم و پاسخ‌گویی عمومی است.
+"""
+
+
+# =========================
+# Request Model
 # =========================
 
 class ChatRequest(BaseModel):
@@ -96,15 +155,26 @@ def chat(request: ChatRequest):
             detail="پیام نمی‌تواند خالی باشد.",
         )
 
+    prompt = f"""
+{SYSTEM_PROMPT}
+
+پیام کاربر:
+{message}
+
+پاسخ Shadow.Ai:
+"""
+
     try:
-        response = llm.complete(message)
+        response = llm.complete(prompt)
 
         return {
-            "answer": str(response),
+            "answer": str(response).strip(),
         }
 
     except Exception as e:
+        print(f"Shadow.Ai error: {e}")
+
         raise HTTPException(
             status_code=500,
-            detail=f"AI request failed: {str(e)}",
+            detail="در ارتباط با هوش مصنوعی خطایی رخ داد.",
         )
